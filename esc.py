@@ -25,11 +25,11 @@ from sklearn.neighbors import KNeighborsClassifier
 
 def Generate_Y(X,n_features):
     X_f = []
-    for i in X:
+    for i in X: 
 #        X_f.append(np.fft.fft(i))
         X_f.append(dct(i))
     Y = np.empty([256,861])
-    for i in range(40):
+    for i in range(80):
         x = np.array(X_f[i])
         n = np.floor(x.shape[0]/n_features)
         x = x[:int(n * n_features)]
@@ -82,22 +82,32 @@ path_to_ESC = './ESC-50-master/audio'
 #os.listdir(path_to_ESC)
 
 y = [45,22] # train vs clapping
-
+noise = np.random
 X_data = []
+X_data_noise = []
 y_data = []
 X_1 = []
 X_2 = []
+X_1_noise = []
+X_2_noise = []
 for file in os.listdir(path_to_ESC):
     if file.split('.')[1] == 'wav':
         if int(file.split('.')[0].split('-')[-1]) in y:
             rate, audio = wavfile.read(path_to_ESC +'/'+ file)
+            audio_noise = audio.astype(np.float64)
+            audio_noise += np.random.normal(scale=5, size=len(audio))
             X_data.append(audio)
+            X_data_noise.append(audio_noise)
             y_data.append(file.split('.')[0].split('-')[-1])
             if int(file.split('.')[0].split('-')[-1]) == y[0]:
                 X_1.append(audio)
+                X_1_noise.append(audio_noise)
             else:
                 X_2.append(audio)
-                
+                X_2_noise.append(audio_noise)
+X_1 = np.vstack((X_1,X_1_noise))
+X_2 = np.vstack((X_2,X_2_noise))
+
 Y_1 = Generate_Y(X_1,256)
 #Y_1 = Y_1[:,-861*20:]
 print(Y_1.shape)
@@ -108,11 +118,10 @@ D1 = np.load('./Dict_train.npy')
 D2 = np.load('./Dict_clapping.npy')
 print(D1.shape,D2.shape)
 #X1,X2 = cross_OMP(D1,D2,Y_1,Y_2)
-n_sample = 40
+n_sample = 80
 X1 = np.empty([n_sample,1000])
 X2 = np.empty([n_sample,1000])
 for i in range(n_sample):
-#    print(i)
     y_1 = Y_1[:,i*861:(i+1)*861]
     y_2 = Y_2[:,i*861:(i+1)*861]
     x1,x2 = cross_OMP(D1,D2,y_1,y_2)
@@ -126,7 +135,7 @@ X = np.vstack((X1,X2))
 y = np.append(y1,y2)
 #X = np.max(X,axis = 0) # max pooling
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = .5)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = .25)
 clf = RandomForestClassifier()
 clf.fit(X_train,y_train)
 s = clf.score(X_test,y_test)
